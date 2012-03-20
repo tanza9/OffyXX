@@ -4,15 +4,45 @@ from django.http import HttpResponse
 from gae_xapxam.offyxapxam.ext.response import JSONResponse
 from django.http import HttpRequest
 from gae_xapxam.offyxapxam import models
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 
+#
+# http://juhap.iki.fi/webdev/cross-domain-http-with-python/
+#
+def set_access_control_headers(response):
+    response['Access-Control-Allow-Origin'] = '*'
+    response['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+    response['Access-Control-Max-Age'] = 1000
+    response['Access-Control-Allow-Headers'] = '*'
+
+class HttpOptionsDecorator(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, *args):
+        #logging.info("Call decorator")
+        request = args[0]
+        if request.method == "OPTIONS":
+            response = HttpResponse()
+            set_access_control_headers(response)
+            return response
+        else:
+            response = self.f(*args)
+            set_access_control_headers(response)
+            return response
+
+@HttpOptionsDecorator
 def json(request, data):
     t = loader.get_template('json.html')
     c = RequestContext(request, {
         'message': data,
     })
     return HttpResponse(t.render(c))
+    #response = HttpResponse(t.render(c))
+    #set_access_control_headers(response)
+    #return response
 
 def index(request):
     t = loader.get_template('index.html')
@@ -36,6 +66,7 @@ def shuffleDeck(request):
     }
     return JSONResponse(response_data)
 
+@csrf_exempt
 def getRandomSet(request):
     from random import shuffle
 
